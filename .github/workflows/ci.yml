@@ -6,19 +6,29 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build Docker image
         run: |
-          docker build -t 192.168.1.41:30500/first-game-image:${{ github.sha }} -t 192.168.1.41:30500/first-game-image:latest .
+          docker build -t ghcr.io/jati251/first-game-image:${{ github.sha }} -t ghcr.io/jati251/first-game-image:latest .
 
       - name: Push Docker image
         run: |
-          docker push 192.168.1.41:30500/first-game-image:${{ github.sha }}
-          docker push 192.168.1.41:30500/first-game-image:latest
+          docker push ghcr.io/jati251/first-game-image:${{ github.sha }}
+          docker push ghcr.io/jati251/first-game-image:latest
 
       - name: Update GitOps Repository
         env:
@@ -29,7 +39,7 @@ jobs:
           cd homelab-gitops
           
           # Update the tag in the deployment yaml
-          sed -i "s|image: 192.168.1.41:30500/first-game-image:.*|image: 192.168.1.41:30500/first-game-image:${GITHUB_SHA}|g" apps/first-game/deploy.yaml || true
+          sed -i "s|image: ghcr.io/jati251/first-game-image:.*|image: ghcr.io/jati251/first-game-image:${GITHUB_SHA}|g" apps/first-game/deploy.yaml || true
           
           git config user.name "CI/CD Pipeline"
           git config user.email "ci@homelab.local"
